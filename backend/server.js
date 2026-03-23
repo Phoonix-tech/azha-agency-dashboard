@@ -227,14 +227,21 @@ app.get('/api/activity', (req, res) => {
     SELECT al.*,
            a.name  as agent_name,
            a.emoji as agent_emoji,
-           t.id        as linked_task_db_id,
-           t.task_id   as linked_task_id,
-           t.title     as linked_task_title,
-           t.status    as linked_task_status,
-           t.priority  as linked_task_priority
+           COALESCE(t.id,  tf.id)       as linked_task_db_id,
+           COALESCE(t.task_id,  tf.task_id)   as linked_task_id,
+           COALESCE(t.title,    tf.title)     as linked_task_title,
+           COALESCE(t.status,   tf.status)    as linked_task_status,
+           COALESCE(t.priority, tf.priority)  as linked_task_priority
     FROM activity_log al
-    LEFT JOIN agents a ON al.agent_id = a.id
-    LEFT JOIN tasks t ON al.task_id = t.id
+    LEFT JOIN agents a  ON al.agent_id = a.id
+    LEFT JOIN tasks t   ON al.task_id  = t.id
+    LEFT JOIN tasks tf  ON al.task_id IS NULL
+                       AND tf.task_id = (
+                         SELECT task_id FROM tasks
+                         WHERE al.detail LIKE '%' || task_id || '%'
+                         ORDER BY LENGTH(task_id) DESC
+                         LIMIT 1
+                       )
     ORDER BY al.created_at DESC LIMIT 50
   `).all());
 });

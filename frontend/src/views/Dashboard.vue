@@ -80,7 +80,6 @@
             </div>
             <div class="flex items-center gap-2 shrink-0">
               <button
-                v-if="item.linked_task_db_id"
                 @click="openTaskModal(item)"
                 class="text-xs text-indigo-400 hover:text-indigo-300 whitespace-nowrap transition-colors"
               >View Task</button>

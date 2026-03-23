@@ -84,8 +84,8 @@ app.post('/api/tasks', (req, res) => {
 
   // Log activity
   if (agent_id) {
-    db.prepare('INSERT INTO activity_log (agent_id, action, detail) VALUES (?, ?, ?)').run(
-      agent_id, 'task_created', `Created ${task_id}: ${title}`
+    db.prepare('INSERT INTO activity_log (agent_id, action, detail, task_id) VALUES (?, ?, ?, ?)').run(
+      agent_id, 'task_created', `Created ${task_id}: ${title}`, result.lastInsertRowid
     );
   }
 
@@ -120,8 +120,8 @@ app.put('/api/tasks/:id', (req, res) => {
   if (status && status !== existing.status) {
     const actAgentId = agent_id ?? existing.agent_id;
     if (actAgentId) {
-      db.prepare('INSERT INTO activity_log (agent_id, action, detail) VALUES (?, ?, ?)').run(
-        actAgentId, 'task_updated', `${existing.task_id} moved to ${status}`
+      db.prepare('INSERT INTO activity_log (agent_id, action, detail, task_id) VALUES (?, ?, ?, ?)').run(
+        actAgentId, 'task_updated', `${existing.task_id} moved to ${status}`, existing.id
       );
     }
   }
@@ -164,7 +164,7 @@ app.post('/api/blockers', (req, res) => {
   if (!description) return res.status(400).json({ error: 'description required' });
   const result = db.prepare('INSERT INTO blockers (task_id, agent_id, description) VALUES (?, ?, ?)').run(task_id, agent_id, description);
   if (agent_id) {
-    db.prepare('INSERT INTO activity_log (agent_id, action, detail) VALUES (?, ?, ?)').run(agent_id, 'blocker_added', description);
+    db.prepare('INSERT INTO activity_log (agent_id, action, detail, task_id) VALUES (?, ?, ?, ?)').run(agent_id, 'blocker_added', description, task_id || null);
   }
   res.status(201).json(db.prepare('SELECT * FROM blockers WHERE id = ?').get(result.lastInsertRowid));
 });
@@ -174,7 +174,7 @@ app.put('/api/blockers/:id/resolve', (req, res) => {
   if (!b) return res.status(404).json({ error: 'Blocker not found' });
   db.prepare("UPDATE blockers SET resolved=1, resolved_at=CURRENT_TIMESTAMP WHERE id=?").run(req.params.id);
   if (b.agent_id) {
-    db.prepare('INSERT INTO activity_log (agent_id, action, detail) VALUES (?, ?, ?)').run(b.agent_id, 'blocker_resolved', b.description);
+    db.prepare('INSERT INTO activity_log (agent_id, action, detail, task_id) VALUES (?, ?, ?, ?)').run(b.agent_id, 'blocker_resolved', b.description, b.task_id || null);
   }
   res.json(db.prepare('SELECT * FROM blockers WHERE id = ?').get(req.params.id));
 });
@@ -216,7 +216,7 @@ app.post('/api/mistakes', (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(agent_id, task_id, title, description, severity || 'medium', lesson);
   if (agent_id) {
-    db.prepare('INSERT INTO activity_log (agent_id, action, detail) VALUES (?, ?, ?)').run(agent_id, 'mistake_logged', title);
+    db.prepare('INSERT INTO activity_log (agent_id, action, detail, task_id) VALUES (?, ?, ?, ?)').run(agent_id, 'mistake_logged', title, task_id || null);
   }
   res.status(201).json(db.prepare('SELECT * FROM mistakes WHERE id = ?').get(result.lastInsertRowid));
 });
@@ -224,17 +224,25 @@ app.post('/api/mistakes', (req, res) => {
 // ── ACTIVITY ───────────────────────────────────────────────────────────────
 app.get('/api/activity', (req, res) => {
   res.json(db.prepare(`
-    SELECT al.*, a.name as agent_name, a.emoji as agent_emoji
+    SELECT al.*,
+           a.name  as agent_name,
+           a.emoji as agent_emoji,
+           t.id        as linked_task_db_id,
+           t.task_id   as linked_task_id,
+           t.title     as linked_task_title,
+           t.status    as linked_task_status,
+           t.priority  as linked_task_priority
     FROM activity_log al
     LEFT JOIN agents a ON al.agent_id = a.id
+    LEFT JOIN tasks t ON al.task_id = t.id
     ORDER BY al.created_at DESC LIMIT 50
   `).all());
 });
 
 app.post('/api/activity', (req, res) => {
-  const { agent_id, action, detail } = req.body;
+  const { agent_id, action, detail, task_id } = req.body;
   if (!action) return res.status(400).json({ error: 'action required' });
-  const result = db.prepare('INSERT INTO activity_log (agent_id, action, detail) VALUES (?, ?, ?)').run(agent_id, action, detail);
+  const result = db.prepare('INSERT INTO activity_log (agent_id, action, detail, task_id) VALUES (?, ?, ?, ?)').run(agent_id, action, detail, task_id || null);
   res.status(201).json(db.prepare('SELECT * FROM activity_log WHERE id = ?').get(result.lastInsertRowid));
 });
 

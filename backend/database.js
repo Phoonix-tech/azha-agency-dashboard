@@ -7,6 +7,9 @@ const db = new Database(path.join(__dirname, 'agency.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// Migrations — safe to run every startup
+try { db.exec('ALTER TABLE activity_log ADD COLUMN task_id INTEGER REFERENCES tasks(id)') } catch (_) {}
+
 // Create tables
 db.exec(`
 CREATE TABLE IF NOT EXISTS agents (

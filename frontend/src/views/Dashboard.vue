@@ -78,8 +78,37 @@
               </div>
               <div class="text-xs text-slate-500 mt-0.5 truncate">{{ item.detail }}</div>
             </div>
-            <div class="text-xs text-slate-600 whitespace-nowrap">{{ timeAgo(item.created_at) }}</div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button
+                v-if="item.linked_task_db_id"
+                @click="openTaskModal(item)"
+                class="text-xs text-indigo-400 hover:text-indigo-300 whitespace-nowrap transition-colors"
+              >View Task</button>
+              <div class="text-xs text-slate-600 whitespace-nowrap">{{ timeAgo(item.created_at) }}</div>
+            </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Task detail modal (from activity) -->
+    <div v-if="activityTask" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" @click.self="activityTask = null">
+      <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs text-slate-500 font-mono">{{ activityTask.linked_task_id }}</span>
+          <button @click="activityTask = null" class="text-slate-500 hover:text-slate-300 text-xl leading-none">&times;</button>
+        </div>
+        <h3 class="text-white font-semibold text-base mb-3">{{ activityTask.linked_task_title }}</h3>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="badge" :class="priorityClass(activityTask.linked_task_priority)">{{ activityTask.linked_task_priority }}</span>
+          <span class="badge bg-slate-700 text-slate-300 capitalize">{{ activityTask.linked_task_status }}</span>
+        </div>
+        <div class="mt-4 text-xs text-slate-400">
+          Triggered by: <span class="text-white">{{ activityTask.agent_emoji }} {{ activityTask.agent_name }}</span>
+          · {{ formatAction(activityTask.action) }}
+        </div>
+        <div class="flex justify-end mt-5">
+          <button @click="activityTask = null" class="btn-secondary">Close</button>
         </div>
       </div>
     </div>
@@ -106,6 +135,21 @@ const donePercent = computed(() => {
 })
 const unresolvedBlockers = computed(() => store.blockers.filter(b => !b.resolved))
 const activityFeed = computed(() => store.activity)
+
+// Activity task modal
+const activityTask = ref(null)
+function openTaskModal(item) {
+  activityTask.value = item
+}
+
+function priorityClass(p) {
+  return {
+    critical: 'bg-red-900 text-red-300',
+    high: 'bg-orange-900 text-orange-300',
+    medium: 'bg-yellow-900 text-yellow-300',
+    low: 'bg-slate-700 text-slate-300',
+  }[p] || 'bg-slate-700 text-slate-300'
+}
 
 function formatAction(action) {
   const map = {

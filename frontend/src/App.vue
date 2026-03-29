@@ -46,6 +46,9 @@
           <RouterLink to="/mistakes" class="nav-link" :class="{ active: $route.path === '/mistakes' }">
             <span class="text-lg">⚠️</span> Mistakes
           </RouterLink>
+          <RouterLink to="/reports" class="nav-link" :class="{ active: $route.path === '/reports' }">
+            <span class="text-lg">📄</span> Reports
+          </RouterLink>
         </div>
       </nav>
 

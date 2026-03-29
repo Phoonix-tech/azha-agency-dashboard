@@ -13,6 +13,7 @@ export const useMainStore = defineStore('main', () => {
   const standups = ref([])
   const mistakes = ref([])
   const activity = ref([])
+  const reports = ref([])
   const currentSprint = computed(() => sprints.value.find(s => s.status === 'active') || sprints.value[0])
 
   async function fetchStats() {
@@ -97,10 +98,31 @@ export const useMainStore = defineStore('main', () => {
     return data
   }
 
+  async function fetchReports(params = {}) {
+    const { data } = await axios.get(`${API}/reports`, { params })
+    reports.value = data
+    return data
+  }
+
+  async function fetchReport(id) {
+    const { data } = await axios.get(`${API}/reports/${id}`)
+    return data
+  }
+
+  async function createReport(payload) {
+    const { data } = await axios.post(`${API}/reports`, payload)
+    return data
+  }
+
+  async function deleteReport(id) {
+    await axios.delete(`${API}/reports/${id}`)
+  }
+
   return {
-    stats, agents, tasks, sprints, blockers, standups, mistakes, activity, currentSprint,
+    stats, agents, tasks, sprints, blockers, standups, mistakes, activity, reports, currentSprint,
     fetchStats, fetchAgents, fetchTasks, fetchSprints, fetchBlockers,
     fetchStandups, fetchMistakes, fetchActivity,
+    fetchReports, fetchReport, createReport, deleteReport,
     createTask, updateTask, deleteTask,
     createBlocker, resolveBlocker, createStandup, createMistake,
   }
